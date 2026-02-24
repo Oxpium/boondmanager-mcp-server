@@ -1,0 +1,39 @@
+name: Bug Report
+description: Signaler un bug dans le serveur MCP BoondManager
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Description claire du bug
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Etapes de reproduction
+      description: Etapes pour reproduire le probleme
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+      description: Ce qui devrait se passer
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Version du package ou SHA du commit
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Version Node.js
+      description: "Resultat de `node --version`"
+    validations:
+      required: true

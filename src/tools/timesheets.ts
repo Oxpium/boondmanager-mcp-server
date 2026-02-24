@@ -9,7 +9,7 @@ import type {
   TimesheetSearchInput,
   TimesheetGetInput,
 } from "../schemas/index.js";
-import { apiRequest, buildSearchQuery, formatListResponse, formatDetailResponse } from "../services/boond-client.js";
+import { apiRequest, buildSearchQuery, formatDetailResponse } from "../services/boond-client.js";
 import { CHARACTER_LIMIT } from "../constants.js";
 import type { JsonApiResponse } from "../types.js";
 

@@ -1,5 +1,9 @@
 # BoondManager MCP Server
 
+[![CI](https://github.com/fauguste/boondmanager-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/fauguste/boondmanager-mcp-server/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/boondmanager-mcp-server.svg)](https://www.npmjs.com/package/boondmanager-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Serveur MCP (Model Context Protocol) pour l'API BoondManager, permettant à Claude (Desktop, Cowork, Code) de rechercher, consulter, créer et modifier des enregistrements dans votre instance BoondManager.
 
 ## 🎯 Domaines couverts
@@ -12,8 +16,9 @@ Serveur MCP (Model Context Protocol) pour l'API BoondManager, permettant à Clau
 | **Sociétés** | search, get, create, update, delete | Entreprises clientes et prospects |
 | **Opportunités** | search, get, create, update, delete | Pipeline commercial |
 | **Actions** | search, get, create, delete | Suivi d'activité (appels, emails, RDV) |
+| **Feuilles de temps** | search, get, resource timesheets | Consultation des temps saisis |
 
-**Total : 28 outils**
+**Total : 31 outils**
 
 ## 📋 Prérequis
 
@@ -103,10 +108,14 @@ boondmanager-mcp-server/
 │       ├── contacts.ts       # Outils contacts
 │       ├── companies.ts      # Outils sociétés
 │       ├── opportunities.ts  # Outils opportunités
-│       └── actions.ts        # Outils actions
+│       ├── actions.ts        # Outils actions
+│       └── timesheets.ts    # Outils feuilles de temps
 ├── dist/                     # Build JavaScript
+├── .github/                  # CI/CD, templates, Dependabot
 ├── package.json
 ├── tsconfig.json
+├── vitest.config.ts
+├── eslint.config.js
 └── README.md
 ```
 
@@ -128,6 +137,14 @@ npm run build
 
 # Lancer le serveur
 npm start
+
+# Tests
+npm test
+npm run test:coverage
+
+# Lint
+npm run lint
+npm run typecheck
 ```
 
 ## 📚 Ressources

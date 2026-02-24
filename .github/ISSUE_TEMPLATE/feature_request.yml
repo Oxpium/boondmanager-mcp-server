@@ -1,0 +1,25 @@
+name: Feature Request
+description: Proposer une nouvelle fonctionnalite ou un nouvel outil MCP
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Decrivez la fonctionnalite souhaitee
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Cas d'usage
+      description: Quel probleme cette fonctionnalite resoudrait-elle ?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagees
+      description: Solutions alternatives que vous avez considerees
+    validations:
+      required: false

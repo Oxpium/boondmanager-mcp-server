@@ -3,11 +3,38 @@
   "version": "1.0.0",
   "description": "MCP Server for BoondManager API - Resources, Candidates & CRM",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
+  "bin": {
+    "boondmanager-mcp-server": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fauguste/boondmanager-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fauguste/boondmanager-mcp-server/issues"
+  },
+  "homepage": "https://github.com/fauguste/boondmanager-mcp-server#readme",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "keywords": ["mcp", "boondmanager", "esn", "crm", "candidates", "resources"],
   "author": "Silamir",
@@ -17,7 +44,12 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/node": "^22.15.3",
-    "typescript": "^5.8.3"
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
   }
 }

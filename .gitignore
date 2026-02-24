@@ -7,5 +7,10 @@ dist/
 .env
 .env.*
 
+coverage/
+
+.vscode/
+.idea/
+
 .DS_Store
 Thumbs.db

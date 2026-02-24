@@ -1,0 +1,8 @@
+# Global owner
+* @fauguste
+
+# Source code
+/src/ @fauguste
+
+# CI/CD configuration
+/.github/ @fauguste
