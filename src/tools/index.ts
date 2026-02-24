@@ -4,3 +4,4 @@ export { registerContactTools } from "./contacts.js";
 export { registerCompanyTools } from "./companies.js";
 export { registerOpportunityTools } from "./opportunities.js";
 export { registerActionTools } from "./actions.js";
+export { registerTimesheetTools } from "./timesheets.js";

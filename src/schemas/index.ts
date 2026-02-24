@@ -173,6 +173,29 @@ export const ActionCreateSchema = z.object({
   companyId: z.string().optional().describe("ID de la société associée"),
 }).strict();
 
+// ---- Timesheet schemas ----
+
+export const ResourceTimesheetSchema = z.object({
+  resourceId: z.string().min(1).describe("ID de la ressource"),
+  month: z.number().int().min(1).max(12).optional().describe("Mois (1-12). Si omis, mois courant."),
+  year: z.number().int().min(2000).optional().describe("Année (ex: 2025). Si omis, année courante."),
+}).strict();
+
+export const TimesheetSearchSchema = z.object({
+  startDate: z.string().optional().describe("Date de début de période (YYYY-MM-DD)"),
+  endDate: z.string().optional().describe("Date de fin de période (YYYY-MM-DD)"),
+  page: z.number().int().min(1).default(1).describe("Numéro de page (défaut: 1)"),
+  pageSize: z.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE)
+    .describe(`Nombre de résultats par page (max: ${MAX_PAGE_SIZE}, défaut: ${DEFAULT_PAGE_SIZE})`),
+}).strict();
+
+export const TimesheetGetSchema = z.object({
+  id: z.string().min(1).describe("Identifiant unique de la feuille de temps"),
+}).strict();
+
 export type SearchInput = z.infer<typeof SearchSchema>;
 export type IdInput = z.infer<typeof IdSchema>;
 export type IdTabInput = z.infer<typeof IdTabSchema>;
+export type ResourceTimesheetInput = z.infer<typeof ResourceTimesheetSchema>;
+export type TimesheetSearchInput = z.infer<typeof TimesheetSearchSchema>;
+export type TimesheetGetInput = z.infer<typeof TimesheetGetSchema>;

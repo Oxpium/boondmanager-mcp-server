@@ -8,6 +8,7 @@ import {
   registerCompanyTools,
   registerOpportunityTools,
   registerActionTools,
+  registerTimesheetTools,
 } from "./tools/index.js";
 
 const server = new McpServer({
@@ -22,6 +23,7 @@ registerContactTools(server);
 registerCompanyTools(server);
 registerOpportunityTools(server);
 registerActionTools(server);
+registerTimesheetTools(server);
 
 // Initialize and run
 async function main(): Promise<void> {
@@ -35,7 +37,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("🚀 BoondManager MCP Server running (stdio transport)");
-  console.error("📦 Domains: candidates, resources, contacts, companies, opportunities, actions");
+  console.error("📦 Domains: candidates, resources, contacts, companies, opportunities, actions, timesheets");
 }
 
 main().catch((error) => {
