@@ -27,6 +27,17 @@ describe("constants", () => {
     expect(API_PATHS).toHaveProperty("companies");
     expect(API_PATHS).toHaveProperty("opportunities");
     expect(API_PATHS).toHaveProperty("actions");
+    expect(API_PATHS).toHaveProperty("projects");
+    expect(API_PATHS).toHaveProperty("invoices");
+    expect(API_PATHS).toHaveProperty("orders");
+    expect(API_PATHS).toHaveProperty("deliveries");
+    expect(API_PATHS).toHaveProperty("absences");
+    expect(API_PATHS).toHaveProperty("expenses");
+    expect(API_PATHS).toHaveProperty("products");
+    expect(API_PATHS).toHaveProperty("positionings");
+    expect(API_PATHS).toHaveProperty("payments");
+    expect(API_PATHS).toHaveProperty("advantages");
+    expect(API_PATHS).toHaveProperty("application");
   });
 
   it("API_PATHS values should start with /", () => {
@@ -42,5 +53,7 @@ describe("constants", () => {
     expect(ENTITY_TABS.contacts).toContain("information");
     expect(ENTITY_TABS.companies).toContain("information");
     expect(ENTITY_TABS.opportunities).toContain("information");
+    expect(ENTITY_TABS.projects).toContain("information");
+    expect(ENTITY_TABS.projects).toContain("planning");
   });
 });

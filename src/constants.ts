@@ -12,6 +12,17 @@ export const API_PATHS = {
   companies: "/companies",
   opportunities: "/opportunities",
   actions: "/actions",
+  projects: "/projects",
+  invoices: "/invoices",
+  orders: "/orders",
+  deliveries: "/deliveries",
+  absences: "/absences",
+  expenses: "/expenses",
+  products: "/products",
+  positionings: "/positionings",
+  payments: "/payments",
+  advantages: "/advantages",
+  application: "/application",
 } as const;
 
 // Tab names available on entities
@@ -21,4 +32,5 @@ export const ENTITY_TABS = {
   contacts: ["information", "actions", "documents"] as const,
   companies: ["information", "actions", "documents"] as const,
   opportunities: ["information", "actions", "documents"] as const,
+  projects: ["information", "planning", "actions", "documents"] as const,
 } as const;

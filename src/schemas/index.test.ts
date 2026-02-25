@@ -18,6 +18,28 @@ import {
   ResourceTimesheetSchema,
   TimesheetSearchSchema,
   TimesheetGetSchema,
+  ProjectCreateSchema,
+  ProjectUpdateSchema,
+  InvoiceCreateSchema,
+  InvoiceUpdateSchema,
+  InvoiceSearchSchema,
+  OrderCreateSchema,
+  OrderUpdateSchema,
+  OrderSearchSchema,
+  DeliverySearchSchema,
+  AbsenceCreateSchema,
+  AbsenceUpdateSchema,
+  AbsenceSearchSchema,
+  ExpenseCreateSchema,
+  ExpenseUpdateSchema,
+  ExpenseSearchSchema,
+  ProductCreateSchema,
+  ProductUpdateSchema,
+  PositioningCreateSchema,
+  PositioningSearchSchema,
+  PaymentSearchSchema,
+  AdvantageSearchSchema,
+  DictionaryGetSchema,
 } from "./index.js";
 
 describe("SearchSchema", () => {
@@ -298,5 +320,290 @@ describe("TimesheetGetSchema", () => {
 
   it("should reject empty id", () => {
     expect(TimesheetGetSchema.safeParse({ id: "" }).success).toBe(false);
+  });
+});
+
+describe("ProjectCreateSchema", () => {
+  it("should accept valid project", () => {
+    const result = ProjectCreateSchema.safeParse({
+      name: "Mission Alpha",
+      startDate: "2025-01-01",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should require name", () => {
+    expect(ProjectCreateSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("should accept all optional fields", () => {
+    const result = ProjectCreateSchema.safeParse({
+      name: "Mission Alpha",
+      companyId: "1",
+      contactId: "2",
+      opportunityId: "3",
+      state: 0,
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+      note: "Projet stratégique",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject unknown fields", () => {
+    expect(ProjectCreateSchema.safeParse({ name: "Test", foo: "bar" }).success).toBe(false);
+  });
+});
+
+describe("ProjectUpdateSchema", () => {
+  it("should require id", () => {
+    expect(ProjectUpdateSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("should accept id with partial fields", () => {
+    const result = ProjectUpdateSchema.safeParse({ id: "1", name: "Renamed" });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("InvoiceCreateSchema", () => {
+  it("should accept valid invoice", () => {
+    const result = InvoiceCreateSchema.safeParse({
+      reference: "FAC-2025-001",
+      amountExcludingTax: 5000,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept empty invoice (no required fields besides optionals)", () => {
+    const result = InvoiceCreateSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("InvoiceUpdateSchema", () => {
+  it("should require id", () => {
+    expect(InvoiceUpdateSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("InvoiceSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = InvoiceSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+
+  it("should accept filters", () => {
+    const result = InvoiceSearchSchema.safeParse({
+      companyId: "1",
+      projectId: "2",
+      startDate: "2025-01-01",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("OrderCreateSchema", () => {
+  it("should accept valid order", () => {
+    const result = OrderCreateSchema.safeParse({
+      reference: "BC-2025-001",
+      amountExcludingTax: 10000,
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("OrderUpdateSchema", () => {
+  it("should require id", () => {
+    expect(OrderUpdateSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("OrderSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = OrderSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+});
+
+describe("DeliverySearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = DeliverySearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+
+  it("should accept filters", () => {
+    const result = DeliverySearchSchema.safeParse({
+      projectId: "1",
+      companyId: "2",
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("AbsenceCreateSchema", () => {
+  it("should accept valid absence", () => {
+    const result = AbsenceCreateSchema.safeParse({
+      resourceId: "123",
+      typeOf: "congé payé",
+      startDate: "2025-08-01",
+      endDate: "2025-08-15",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should require resourceId, typeOf, startDate, endDate", () => {
+    expect(AbsenceCreateSchema.safeParse({}).success).toBe(false);
+    expect(AbsenceCreateSchema.safeParse({ resourceId: "1" }).success).toBe(false);
+    expect(AbsenceCreateSchema.safeParse({ resourceId: "1", typeOf: "RTT" }).success).toBe(false);
+  });
+});
+
+describe("AbsenceUpdateSchema", () => {
+  it("should require id", () => {
+    expect(AbsenceUpdateSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("should accept partial update", () => {
+    const result = AbsenceUpdateSchema.safeParse({ id: "1", state: 1 });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("AbsenceSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = AbsenceSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+});
+
+describe("ExpenseCreateSchema", () => {
+  it("should accept valid expense", () => {
+    const result = ExpenseCreateSchema.safeParse({
+      resourceId: "123",
+      expenseDate: "2025-06-15",
+      amount: 45.50,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should require resourceId, expenseDate, amount", () => {
+    expect(ExpenseCreateSchema.safeParse({}).success).toBe(false);
+    expect(ExpenseCreateSchema.safeParse({ resourceId: "1" }).success).toBe(false);
+  });
+});
+
+describe("ExpenseUpdateSchema", () => {
+  it("should require id", () => {
+    expect(ExpenseUpdateSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("ExpenseSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = ExpenseSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+});
+
+describe("ProductCreateSchema", () => {
+  it("should accept valid product", () => {
+    const result = ProductCreateSchema.safeParse({
+      name: "Prestation Consulting",
+      unitPrice: 800,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should require name", () => {
+    expect(ProductCreateSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("ProductUpdateSchema", () => {
+  it("should require id", () => {
+    expect(ProductUpdateSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("should accept partial update", () => {
+    const result = ProductUpdateSchema.safeParse({ id: "1", unitPrice: 900 });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("PositioningCreateSchema", () => {
+  it("should accept valid positioning", () => {
+    const result = PositioningCreateSchema.safeParse({
+      candidateId: "1",
+      opportunityId: "2",
+      startDate: "2025-03-01",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept empty positioning (all fields optional)", () => {
+    const result = PositioningCreateSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("PositioningSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = PositioningSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+
+  it("should accept all filters", () => {
+    const result = PositioningSearchSchema.safeParse({
+      candidateId: "1",
+      resourceId: "2",
+      projectId: "3",
+      opportunityId: "4",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("PaymentSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = PaymentSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+
+  it("should accept filters", () => {
+    const result = PaymentSearchSchema.safeParse({
+      invoiceId: "1",
+      companyId: "2",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("AdvantageSearchSchema", () => {
+  it("should accept empty search with defaults", () => {
+    const result = AdvantageSearchSchema.parse({});
+    expect(result.page).toBe(1);
+  });
+
+  it("should accept resourceId filter", () => {
+    const result = AdvantageSearchSchema.safeParse({ resourceId: "123" });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("DictionaryGetSchema", () => {
+  it("should accept valid dictionary type", () => {
+    const result = DictionaryGetSchema.safeParse({ dictionaryType: "typeOf/actions" });
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject empty dictionary type", () => {
+    expect(DictionaryGetSchema.safeParse({ dictionaryType: "" }).success).toBe(false);
+  });
+
+  it("should reject missing dictionary type", () => {
+    expect(DictionaryGetSchema.safeParse({}).success).toBe(false);
   });
 });

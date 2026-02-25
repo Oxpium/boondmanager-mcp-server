@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ContactCreateSchema, ContactUpdateSchema } from "../schemas/index.js";
+import { ContactCreateSchema, ContactUpdateSchema, IdSchema } from "../schemas/index.js";
+import type { IdInput } from "../schemas/index.js";
 import {
   registerSearchTool,
   registerGetTool,
@@ -8,6 +9,7 @@ import {
   registerDeleteTool,
   buildJsonApiBody,
 } from "./crud-factory.js";
+import { apiRequest, formatDetailResponse } from "../services/boond-client.js";
 
 const OPTS = {
   entityName: "contact",
@@ -15,6 +17,56 @@ const OPTS = {
   apiPath: "/contacts",
   prefix: "boond_contacts",
 };
+
+const TAB_TOOL_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+
+interface TabDefinition {
+  name: string;
+  tab: string;
+  title: string;
+  description: string;
+}
+
+const CONTACT_TABS: TabDefinition[] = [
+  {
+    name: "information",
+    tab: "information",
+    title: "Informations générales d'un contact",
+    description: `Récupère les informations générales d'un contact (coordonnées, société, fonction, tags...).
+
+Args:
+  - id (string): ID du contact
+
+Returns: Données personnelles et professionnelles du contact.`,
+  },
+  {
+    name: "actions",
+    tab: "actions",
+    title: "Actions liées à un contact",
+    description: `Récupère les actions (appels, emails, RDV, notes) associées à un contact.
+
+Args:
+  - id (string): ID du contact
+
+Returns: Liste des actions liées au contact.`,
+  },
+  {
+    name: "documents",
+    tab: "documents",
+    title: "Documents d'un contact",
+    description: `Récupère les documents attachés à un contact.
+
+Args:
+  - id (string): ID du contact
+
+Returns: Liste des documents du contact.`,
+  },
+];
 
 export function registerContactTools(server: McpServer): void {
   registerSearchTool(server, OPTS);
@@ -37,4 +89,24 @@ export function registerContactTools(server: McpServer): void {
   });
 
   registerDeleteTool(server, OPTS);
+
+  // Register one tool per contact tab
+  for (const tab of CONTACT_TABS) {
+    server.registerTool(
+      `boond_contacts_${tab.name}`,
+      {
+        title: tab.title,
+        description: tab.description,
+        inputSchema: IdSchema,
+        annotations: TAB_TOOL_ANNOTATIONS,
+      },
+      async (params: IdInput) => {
+        const response = await apiRequest(`/contacts/${params.id}/${tab.tab}`);
+        const text = formatDetailResponse(response);
+        return {
+          content: [{ type: "text" as const, text }],
+        };
+      }
+    );
+  }
 }

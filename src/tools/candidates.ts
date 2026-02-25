@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { CandidateCreateSchema, CandidateUpdateSchema } from "../schemas/index.js";
+import { CandidateCreateSchema, CandidateUpdateSchema, IdSchema } from "../schemas/index.js";
+import type { IdInput } from "../schemas/index.js";
 import {
   registerSearchTool,
   registerGetTool,
@@ -8,6 +9,7 @@ import {
   registerDeleteTool,
   buildJsonApiBody,
 } from "./crud-factory.js";
+import { apiRequest, formatDetailResponse } from "../services/boond-client.js";
 
 const OPTS = {
   entityName: "candidat",
@@ -15,6 +17,67 @@ const OPTS = {
   apiPath: "/candidates",
   prefix: "boond_candidates",
 };
+
+const TAB_TOOL_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+
+interface TabDefinition {
+  name: string;
+  tab: string;
+  title: string;
+  description: string;
+}
+
+const CANDIDATE_TABS: TabDefinition[] = [
+  {
+    name: "information",
+    tab: "information",
+    title: "Informations générales d'un candidat",
+    description: `Récupère les informations générales d'un candidat (coordonnées, adresse, état civil, photo, tags, source...).
+
+Args:
+  - id (string): ID du candidat
+
+Returns: Données personnelles et administratives du candidat.`,
+  },
+  {
+    name: "technical",
+    tab: "technical",
+    title: "Compétences techniques d'un candidat",
+    description: `Récupère le profil technique d'un candidat (compétences, expériences, formations, certifications, langues, CV...).
+
+Args:
+  - id (string): ID du candidat
+
+Returns: Données techniques et compétences du candidat.`,
+  },
+  {
+    name: "actions",
+    tab: "actions",
+    title: "Actions liées à un candidat",
+    description: `Récupère les actions (appels, emails, RDV, notes) associées à un candidat.
+
+Args:
+  - id (string): ID du candidat
+
+Returns: Liste des actions liées au candidat.`,
+  },
+  {
+    name: "documents",
+    tab: "documents",
+    title: "Documents d'un candidat",
+    description: `Récupère les documents attachés à un candidat (CV, lettres de motivation, certifications...).
+
+Args:
+  - id (string): ID du candidat
+
+Returns: Liste des documents du candidat.`,
+  },
+];
 
 export function registerCandidateTools(server: McpServer): void {
   registerSearchTool(server, OPTS);
@@ -31,4 +94,24 @@ export function registerCandidateTools(server: McpServer): void {
   });
 
   registerDeleteTool(server, OPTS);
+
+  // Register one tool per candidate tab
+  for (const tab of CANDIDATE_TABS) {
+    server.registerTool(
+      `boond_candidates_${tab.name}`,
+      {
+        title: tab.title,
+        description: tab.description,
+        inputSchema: IdSchema,
+        annotations: TAB_TOOL_ANNOTATIONS,
+      },
+      async (params: IdInput) => {
+        const response = await apiRequest(`/candidates/${params.id}/${tab.tab}`);
+        const text = formatDetailResponse(response);
+        return {
+          content: [{ type: "text" as const, text }],
+        };
+      }
+    );
+  }
 }

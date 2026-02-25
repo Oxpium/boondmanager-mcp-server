@@ -10,6 +10,17 @@ import {
   registerOpportunityTools,
   registerActionTools,
   registerTimesheetTools,
+  registerProjectTools,
+  registerInvoiceTools,
+  registerOrderTools,
+  registerDeliveryTools,
+  registerAbsenceTools,
+  registerExpenseTools,
+  registerProductTools,
+  registerPositioningTools,
+  registerPaymentTools,
+  registerAdvantageTools,
+  registerApplicationTools,
 } from "./tools/index.js";
 
 const server = new McpServer({
@@ -25,6 +36,17 @@ registerCompanyTools(server);
 registerOpportunityTools(server);
 registerActionTools(server);
 registerTimesheetTools(server);
+registerProjectTools(server);
+registerInvoiceTools(server);
+registerOrderTools(server);
+registerDeliveryTools(server);
+registerAbsenceTools(server);
+registerExpenseTools(server);
+registerProductTools(server);
+registerPositioningTools(server);
+registerPaymentTools(server);
+registerAdvantageTools(server);
+registerApplicationTools(server);
 
 // Initialize and run
 async function main(): Promise<void> {
@@ -38,7 +60,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("🚀 BoondManager MCP Server running (stdio transport)");
-  console.error("📦 Domains: candidates, resources, contacts, companies, opportunities, actions, timesheets");
+  console.error("📦 Domains: candidates, resources, contacts, companies, opportunities, actions, timesheets, projects, invoices, orders, deliveries, absences, expenses, products, positionings, payments, advantages, application");
 }
 
 main().catch((error) => {

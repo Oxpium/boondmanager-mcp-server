@@ -10,15 +10,37 @@ Serveur MCP (Model Context Protocol) pour l'API BoondManager, permettant à Clau
 
 | Domaine | Outils | Description |
 |---------|--------|-------------|
-| **Candidats** | search, get, create, update, delete | Gestion du vivier de candidats |
-| **Ressources** | search, get, create, update, delete | Gestion des collaborateurs/consultants |
-| **Contacts** | search, get, create, update, delete | Contacts clients et partenaires |
-| **Sociétés** | search, get, create, update, delete | Entreprises clientes et prospects |
-| **Opportunités** | search, get, create, update, delete | Pipeline commercial |
+| **Candidats** | search, get, create, update, delete + 4 onglets | Gestion du vivier de candidats |
+| **Ressources** | search, get, create, update, delete + 6 onglets | Gestion des collaborateurs/consultants |
+| **Contacts** | search, get, create, update, delete + 3 onglets | Contacts clients et partenaires |
+| **Sociétés** | search, get, create, update, delete + 3 onglets | Entreprises clientes et prospects |
+| **Opportunités** | search, get, create, update, delete + 3 onglets | Pipeline commercial |
 | **Actions** | search, get, create, delete | Suivi d'activité (appels, emails, RDV) |
 | **Feuilles de temps** | search, get, resource timesheets | Consultation des temps saisis |
+| **Projets** | search, get, create, update, delete + 4 onglets | Gestion des missions / projets |
+| **Factures** | search, get, create, update, delete | Facturation client |
+| **Bons de commande** | search, get, create, update, delete | Bons de commande |
+| **Livraisons / CRA** | search, get | Comptes rendus d'activité |
+| **Absences** | search, get, create, update, delete | Congés, RTT, maladie |
+| **Notes de frais** | search, get, create, update, delete | Remboursement de frais |
+| **Produits** | search, get, create, update, delete | Catalogue de produits/prestations |
+| **Positionnements** | search, get, create, delete | Placement candidats/ressources |
+| **Paiements** | search, get | Suivi des règlements |
+| **Avantages** | search, get | Tickets restaurant, mutuelle, primes... |
+| **Application** | dictionnaire, utilisateur courant | Dictionnaires de référence et profil |
 
-**Total : 31 outils**
+**Total : 84 outils**
+
+### Détail des onglets par entité
+
+| Entité | Onglets disponibles |
+|--------|-------------------|
+| Candidats | information, technical, actions, documents |
+| Ressources | information, technical, financial, actions, contracts, documents |
+| Contacts | information, actions, documents |
+| Sociétés | information, actions, documents |
+| Opportunités | information, actions, documents |
+| Projets | information, planning, actions, documents |
 
 ## 📋 Prérequis
 
@@ -87,6 +109,15 @@ Une fois configuré, vous pouvez demander à Claude :
 - *"Liste toutes les opportunités en cours"*
 - *"Quelles sont les actions récentes sur le candidat #789 ?"*
 - *"Mets à jour l'email du contact #456"*
+- *"Affiche les feuilles de temps de la ressource #100 pour mars 2025"*
+- *"Crée un projet Mission Alpha pour la société #42"*
+- *"Recherche les factures en attente de paiement"*
+- *"Liste les absences prévues ce mois-ci"*
+- *"Affiche les notes de frais de la ressource #200"*
+- *"Quels sont les bons de commande du projet #55 ?"*
+- *"Récupère le dictionnaire des types d'actions"*
+- *"Positionne le candidat #10 sur l'opportunité #20"*
+- *"Affiche le planning du projet #33"*
 
 ## 🏗️ Architecture
 
@@ -103,13 +134,24 @@ boondmanager-mcp-server/
 │   └── tools/
 │       ├── index.ts          # Export barrel
 │       ├── crud-factory.ts   # Factory générique CRUD (DRY)
-│       ├── candidates.ts     # Outils candidats
-│       ├── resources.ts      # Outils ressources
-│       ├── contacts.ts       # Outils contacts
-│       ├── companies.ts      # Outils sociétés
-│       ├── opportunities.ts  # Outils opportunités
+│       ├── candidates.ts     # Outils candidats (CRUD + onglets)
+│       ├── resources.ts      # Outils ressources (CRUD + onglets)
+│       ├── contacts.ts       # Outils contacts (CRUD + onglets)
+│       ├── companies.ts      # Outils sociétés (CRUD + onglets)
+│       ├── opportunities.ts  # Outils opportunités (CRUD + onglets)
 │       ├── actions.ts        # Outils actions
-│       └── timesheets.ts    # Outils feuilles de temps
+│       ├── timesheets.ts     # Outils feuilles de temps
+│       ├── projects.ts       # Outils projets (CRUD + onglets)
+│       ├── invoices.ts       # Outils factures
+│       ├── orders.ts         # Outils bons de commande
+│       ├── deliveries.ts     # Outils livraisons / CRA
+│       ├── absences.ts       # Outils absences
+│       ├── expenses.ts       # Outils notes de frais
+│       ├── products.ts       # Outils produits
+│       ├── positionings.ts   # Outils positionnements
+│       ├── payments.ts       # Outils paiements
+│       ├── advantages.ts     # Outils avantages
+│       └── application.ts    # Outils application (dictionnaires)
 ├── dist/                     # Build JavaScript
 ├── .github/                  # CI/CD, templates, Dependabot
 ├── package.json
