@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/fauguste/boondmanager-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/fauguste/boondmanager-mcp-server/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/boondmanager-mcp-server.svg)](https://www.npmjs.com/package/boondmanager-mcp-server)
+[![MCP Registry](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Serveur MCP (Model Context Protocol) pour l'API BoondManager, permettant a Claude (Desktop, Cowork, Code) de rechercher, consulter, creer et modifier des enregistrements dans votre instance BoondManager.
@@ -106,7 +107,119 @@ Les entites principales disposent d'outils dedies par onglet pour un acces cible
 
 ## Installation
 
-### Via npm (recommande)
+### Claude Desktop (one-click)
+
+Telechargez le fichier `.mcpb` depuis la [derniere release GitHub](https://github.com/fauguste/boondmanager-mcp-server/releases/latest), puis dans Claude Desktop : **Fichier > Installer une extension...** et selectionnez le fichier. Les identifiants sont demandes a l'installation et stockes de maniere chiffree (Keychain macOS / Credential Manager Windows).
+
+### Claude Code
+
+```bash
+# Avec un token API (recommande)
+claude mcp add --transport stdio --env BOOND_API_TOKEN=votre_token_jwt \
+  boondmanager -- npx -y boondmanager-mcp-server
+
+# Avec BasicAuth
+claude mcp add --transport stdio \
+  --env BOOND_USER=votre_login \
+  --env BOOND_PASSWORD=votre_mot_de_passe \
+  boondmanager -- npx -y boondmanager-mcp-server
+```
+
+> **Windows** : ajoutez `cmd /c` avant `npx` :
+> ```bash
+> claude mcp add --transport stdio --env BOOND_API_TOKEN=votre_token \
+>   boondmanager -- cmd /c npx -y boondmanager-mcp-server
+> ```
+
+Pour rendre le serveur disponible dans tous vos projets, ajoutez `--scope user` :
+
+```bash
+claude mcp add --transport stdio --scope user \
+  --env BOOND_API_TOKEN=votre_token_jwt \
+  boondmanager -- npx -y boondmanager-mcp-server
+```
+
+### Claude Code - Configuration partagee en equipe
+
+Ajoutez un fichier `.mcp.json` a la racine de votre projet (a commiter dans git) :
+
+```json
+{
+  "mcpServers": {
+    "boondmanager": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "boondmanager-mcp-server"],
+      "env": {
+        "BOOND_API_TOKEN": "${BOOND_API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Chaque membre de l'equipe n'a qu'a definir la variable d'environnement `BOOND_API_TOKEN` sur sa machine. Le fichier `.mcp.json` supporte la syntaxe `${VAR}` et `${VAR:-default}` pour les variables d'environnement.
+
+### Claude Code Enterprise (deploiement administre)
+
+Les administrateurs peuvent deployer le serveur MCP pour tous les utilisateurs via le fichier `managed-mcp.json` :
+
+| OS | Chemin |
+|----|--------|
+| macOS | `/Library/Application Support/ClaudeCode/managed-mcp.json` |
+| Linux / WSL | `/etc/claude-code/managed-mcp.json` |
+| Windows | `C:\Program Files\ClaudeCode\managed-mcp.json` |
+
+```json
+{
+  "mcpServers": {
+    "boondmanager": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "boondmanager-mcp-server"],
+      "env": {
+        "BOOND_API_TOKEN": "${BOOND_API_TOKEN}",
+        "BOOND_BASE_URL": "https://votre-instance.boondmanager.com/api"
+      }
+    }
+  }
+}
+```
+
+Ce fichier prend le controle exclusif des serveurs MCP : les utilisateurs ne peuvent pas ajouter ou modifier de serveurs en dehors de cette configuration.
+
+Pour restreindre les serveurs autorises tout en laissant les utilisateurs en ajouter, utilisez plutot `managed-settings.json` :
+
+```json
+{
+  "allowedMcpServers": [
+    { "serverName": "boondmanager" }
+  ]
+}
+```
+
+### Claude Desktop / Cowork (configuration manuelle)
+
+Ajoutez dans votre fichier de configuration Claude :
+
+**macOS** : `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows** : `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "boondmanager": {
+      "command": "npx",
+      "args": ["-y", "boondmanager-mcp-server"],
+      "env": {
+        "BOOND_API_TOKEN": "votre_token_jwt"
+      }
+    }
+  }
+}
+```
+
+### Via npm
 
 ```bash
 npx boondmanager-mcp-server
@@ -130,64 +243,26 @@ npm run build
 
 ## Configuration
 
-### Variables d'environnement
+### Authentification
 
-**Option 1 : BasicAuth (recommande pour demarrer)**
+**Option 1 : Token API JWT (recommande)**
+```bash
+export BOOND_API_TOKEN="votre_token_jwt"
+```
+
+**Option 2 : BasicAuth**
 ```bash
 export BOOND_USER="votre_login"
 export BOOND_PASSWORD="votre_mot_de_passe"
 ```
 
-**Option 2 : Token API (JWT)**
-```bash
-export BOOND_API_TOKEN="votre_token_jwt"
-```
+### URL personnalisee (si instance dediee)
 
-**Option 3 : URL personnalisee (si instance dediee)**
 ```bash
 export BOOND_BASE_URL="https://votre-instance.boondmanager.com/api"
 ```
 
 Par defaut, l'URL est `https://ui.boondmanager.com/api`.
-
-### Configuration Claude Desktop / Cowork
-
-Ajoutez dans votre fichier de configuration Claude :
-
-**macOS** : `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows** : `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "boondmanager": {
-      "command": "npx",
-      "args": ["-y", "boondmanager-mcp-server"],
-      "env": {
-        "BOOND_USER": "votre_login",
-        "BOOND_PASSWORD": "votre_mot_de_passe"
-      }
-    }
-  }
-}
-```
-
-Ou si installe depuis les sources :
-
-```json
-{
-  "mcpServers": {
-    "boondmanager": {
-      "command": "node",
-      "args": ["/chemin/absolu/vers/boondmanager-mcp-server/dist/index.js"],
-      "env": {
-        "BOOND_USER": "votre_login",
-        "BOOND_PASSWORD": "votre_mot_de_passe"
-      }
-    }
-  }
-}
-```
 
 ## Exemples d'utilisation
 

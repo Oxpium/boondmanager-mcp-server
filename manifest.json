@@ -33,27 +33,27 @@
     "base_url": {
       "type": "string",
       "title": "BoondManager URL",
-      "description": "URL de base de l'API BoondManager (ex: https://ui.boondmanager.com/api)",
+      "description": "URL de base de l'API BoondManager (ex: https://ui.boondmanager.com/api). Laissez vide pour utiliser l'URL par défaut.",
       "default": "https://ui.boondmanager.com/api",
-      "required": false
-    },
-    "user": {
-      "type": "string",
-      "title": "Utilisateur",
-      "description": "Nom d'utilisateur pour l'authentification BasicAuth",
-      "required": false
-    },
-    "password": {
-      "type": "string",
-      "title": "Mot de passe",
-      "description": "Mot de passe pour l'authentification BasicAuth",
-      "sensitive": true,
       "required": false
     },
     "api_token": {
       "type": "string",
-      "title": "Token API",
-      "description": "Token JWT pour l'authentification Bearer (alternative à user/password)",
+      "title": "Token API (recommandé)",
+      "description": "Token JWT pour l'authentification Bearer. Méthode recommandée. Renseignez ce champ OU les champs Utilisateur + Mot de passe ci-dessous.",
+      "sensitive": true,
+      "required": false
+    },
+    "user": {
+      "type": "string",
+      "title": "Utilisateur (BasicAuth)",
+      "description": "Nom d'utilisateur BoondManager. À renseigner avec le mot de passe si vous n'utilisez pas le Token API.",
+      "required": false
+    },
+    "password": {
+      "type": "string",
+      "title": "Mot de passe (BasicAuth)",
+      "description": "Mot de passe BoondManager. À renseigner avec l'utilisateur si vous n'utilisez pas le Token API.",
       "sensitive": true,
       "required": false
     }
