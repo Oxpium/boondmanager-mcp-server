@@ -316,6 +316,7 @@ HTTP env vars (see `src/transports/http.ts::resolveHttpOptions`):
 | `MCP_HTTP_JSON_RESPONSE` | `false` | `true` to return JSON instead of SSE streams |
 | `MCP_HTTP_SESSION_TTL_MS` | `1800000` (30 min) | Stateful only: idle window before a session is closed |
 | `MCP_HTTP_SESSION_SWEEP_INTERVAL_MS` | `300000` (5 min) | Stateful only: how often to scan for idle sessions |
+| `MCP_HTTP_ALLOWED_HOSTS` | (auto) | Comma-separated allow-list of `Host` header hostnames for DNS rebinding protection (CVE-2025-66414). Default = `localhost,127.0.0.1,[::1]` when bound to a loopback interface, otherwise validation is disabled. Set to `*` to opt out explicitly when fronting the server with a reverse proxy that already validates hosts. |
 
 Stateless mode spins up a fresh `McpServer`+`StreamableHTTPServerTransport` per POST. Stateful mode keeps a `sessionId → { transport, server, lastActivityAt }` map; a periodic sweep closes idle sessions (transport + McpServer) so a buggy client that disconnects without `onsessionclosed` cannot leak resources. The sweep timer is `unref()`'d so it never blocks shutdown. The handle exposes `sessionCount()` and `sweepIdleSessions()` for observability/tests.
 

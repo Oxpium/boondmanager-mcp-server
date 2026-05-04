@@ -1,6 +1,48 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { resolveHttpOptions, startHttpTransport, type HttpServerHandle } from "./http.js";
+import { request as httpRequest } from "node:http";
+import { resolveAllowedHosts, resolveHttpOptions, startHttpTransport, type HttpServerHandle } from "./http.js";
 import { createMcpServer } from "../server.js";
+
+/**
+ * Performs a low-level HTTP POST so we can override the Host header (which
+ * `fetch`/undici treats as a forbidden header and silently overrides).
+ */
+function postWithHost(
+  port: number,
+  path: string,
+  hostHeader: string,
+  body: string,
+  extraHeaders: Record<string, string> = {}
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path,
+        method: "POST",
+        headers: {
+          Host: hostHeader,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          ...extraHeaders,
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(chunk as Buffer));
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString("utf8"),
+          });
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end(body);
+  });
+}
 
 const ENV_KEYS = [
   "MCP_HTTP_PORT",
@@ -11,6 +53,7 @@ const ENV_KEYS = [
   "MCP_HTTP_JSON_RESPONSE",
   "MCP_HTTP_SESSION_TTL_MS",
   "MCP_HTTP_SESSION_SWEEP_INTERVAL_MS",
+  "MCP_HTTP_ALLOWED_HOSTS",
 ];
 
 function clearEnv(): void {
@@ -75,6 +118,39 @@ describe("resolveHttpOptions", () => {
   it("throws on an invalid port value", () => {
     process.env["MCP_HTTP_PORT"] = "not-a-port";
     expect(() => resolveHttpOptions()).toThrow(/Invalid MCP_HTTP_PORT/);
+  });
+
+  it("parses MCP_HTTP_ALLOWED_HOSTS as a comma-separated list", () => {
+    process.env["MCP_HTTP_ALLOWED_HOSTS"] = "example.com, mcp.internal ,";
+    const opts = resolveHttpOptions();
+    expect(opts.allowedHosts).toEqual(["example.com", "mcp.internal"]);
+  });
+
+  it("leaves allowedHosts undefined when MCP_HTTP_ALLOWED_HOSTS is unset", () => {
+    const opts = resolveHttpOptions();
+    expect(opts.allowedHosts).toBeUndefined();
+  });
+});
+
+describe("resolveAllowedHosts", () => {
+  it("returns the localhost allow-list by default when bound to a loopback interface", () => {
+    expect(resolveAllowedHosts(undefined, "127.0.0.1")).toEqual(["localhost", "127.0.0.1", "[::1]"]);
+    expect(resolveAllowedHosts(undefined, "::1")).toEqual(["localhost", "127.0.0.1", "[::1]"]);
+    expect(resolveAllowedHosts(undefined, "localhost")).toEqual(["localhost", "127.0.0.1", "[::1]"]);
+  });
+
+  it("returns an empty list (validation disabled) when bound to a non-loopback interface with no config", () => {
+    expect(resolveAllowedHosts(undefined, "0.0.0.0")).toEqual([]);
+    expect(resolveAllowedHosts([], "0.0.0.0")).toEqual([]);
+  });
+
+  it("treats `*` as an explicit opt-out", () => {
+    expect(resolveAllowedHosts(["*"], "127.0.0.1")).toEqual([]);
+    expect(resolveAllowedHosts(["*", "example.com"], "0.0.0.0")).toEqual([]);
+  });
+
+  it("uses the configured allow-list verbatim when provided", () => {
+    expect(resolveAllowedHosts(["mcp.internal"], "0.0.0.0")).toEqual(["mcp.internal"]);
   });
 });
 
@@ -170,6 +246,79 @@ describe("startHttpTransport (integration)", () => {
     await new Promise((resolve) => setTimeout(resolve, 80));
     expect(await handle.sweepIdleSessions()).toBe(1);
     expect(handle.sessionCount()).toBe(0);
+  });
+
+  it("rejects requests with a Host header outside the allow-list", async () => {
+    handle = await startHttpTransport(createMcpServer, {
+      host: "127.0.0.1",
+      port: 34572,
+      path: "/mcp",
+      stateless: true,
+      enableJsonResponse: true,
+    });
+    const res = await postWithHost(handle.address.port, "/mcp", "evil.example.com", "{}");
+    expect(res.status).toBe(403);
+    const parsed = JSON.parse(res.body) as { error?: { message?: string } };
+    expect(parsed.error?.message).toMatch(/Invalid Host/);
+  });
+
+  it("accepts requests with a Host header in the configured allow-list", async () => {
+    handle = await startHttpTransport(createMcpServer, {
+      host: "0.0.0.0",
+      port: 34573,
+      path: "/mcp",
+      stateless: true,
+      enableJsonResponse: true,
+      allowedHosts: ["mcp.internal"],
+    });
+    const okRes = await postWithHost(
+      handle.address.port,
+      "/mcp",
+      "mcp.internal",
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "vitest", version: "1.0.0" },
+        },
+      }),
+      { Accept: "application/json, text/event-stream" }
+    );
+    expect(okRes.status).toBe(200);
+
+    const koRes = await postWithHost(handle.address.port, "/mcp", "other.example.com", "{}");
+    expect(koRes.status).toBe(403);
+  });
+
+  it("disables host validation when allowedHosts is `['*']`", async () => {
+    handle = await startHttpTransport(createMcpServer, {
+      host: "127.0.0.1",
+      port: 34574,
+      path: "/mcp",
+      stateless: true,
+      enableJsonResponse: true,
+      allowedHosts: ["*"],
+    });
+    const res = await postWithHost(
+      handle.address.port,
+      "/mcp",
+      "anything.example.com",
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "vitest", version: "1.0.0" },
+        },
+      }),
+      { Accept: "application/json, text/event-stream" }
+    );
+    expect(res.status).toBe(200);
   });
 
   it("responds to an MCP initialize request in stateless mode", async () => {

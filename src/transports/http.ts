@@ -16,6 +16,13 @@ export interface HttpTransportOptions {
   sessionTtlMs?: number;
   /** How often to sweep idle sessions, in ms. Defaults to 5 min. */
   sessionSweepIntervalMs?: number;
+  /**
+   * Allow-list of Host header hostnames (port-agnostic) for DNS rebinding
+   * protection. Empty array = validation disabled. Use `["*"]` to opt out
+   * explicitly. When undefined, a localhost default is applied if bound
+   * to a loopback interface.
+   */
+  allowedHosts?: string[];
 }
 
 export interface HttpServerHandle {
@@ -32,6 +39,10 @@ export interface HttpServerHandle {
 const DEFAULT_SESSION_TTL_MS = 30 * 60_000;
 const DEFAULT_SESSION_SWEEP_INTERVAL_MS = 5 * 60_000;
 
+// Loopback addresses that should default to the localhost host allow-list.
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
+const LOCALHOST_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
 function readEnv(key: string): string | undefined {
   const v = process.env[key];
   if (!v || v.startsWith("${")) return undefined;
@@ -44,6 +55,46 @@ function readPositiveInt(key: string, fallback: number): number {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.floor(parsed);
+}
+
+function readAllowedHosts(): string[] | undefined {
+  const raw = readEnv("MCP_HTTP_ALLOWED_HOSTS");
+  if (raw === undefined) return undefined;
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return parts;
+}
+
+/**
+ * Resolves the effective Host header allow-list given user options and the
+ * bound listen interface. Returns an empty array when validation is disabled
+ * (either explicitly via `["*"]` or implicitly when bound to a non-loopback
+ * interface without an explicit list).
+ */
+export function resolveAllowedHosts(configured: string[] | undefined, host: string): string[] {
+  if (configured && configured.length > 0) {
+    if (configured.includes("*")) return [];
+    return configured;
+  }
+  if (LOOPBACK_HOSTS.has(host)) return LOCALHOST_ALLOWED_HOSTS;
+  return [];
+}
+
+/**
+ * Extracts the hostname (without port) from a Host header. Returns
+ * `undefined` if the header is missing or malformed.
+ */
+function extractHostname(hostHeader: string | string[] | undefined): string | undefined {
+  if (!hostHeader) return undefined;
+  const value = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
+  if (!value) return undefined;
+  try {
+    return new URL(`http://${value}`).hostname;
+  } catch {
+    return undefined;
+  }
 }
 
 export function resolveHttpOptions(): HttpTransportOptions {
@@ -64,10 +115,8 @@ export function resolveHttpOptions(): HttpTransportOptions {
     bearerToken: readEnv("MCP_HTTP_BEARER_TOKEN"),
     enableJsonResponse,
     sessionTtlMs: readPositiveInt("MCP_HTTP_SESSION_TTL_MS", DEFAULT_SESSION_TTL_MS),
-    sessionSweepIntervalMs: readPositiveInt(
-      "MCP_HTTP_SESSION_SWEEP_INTERVAL_MS",
-      DEFAULT_SESSION_SWEEP_INTERVAL_MS
-    ),
+    sessionSweepIntervalMs: readPositiveInt("MCP_HTTP_SESSION_SWEEP_INTERVAL_MS", DEFAULT_SESSION_SWEEP_INTERVAL_MS),
+    allowedHosts: readAllowedHosts(),
   };
 }
 
@@ -119,8 +168,8 @@ export async function startHttpTransport(
 ): Promise<HttpServerHandle> {
   const sessions = new Map<string, SessionEntry>();
   const sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
-  const sessionSweepIntervalMs =
-    options.sessionSweepIntervalMs ?? DEFAULT_SESSION_SWEEP_INTERVAL_MS;
+  const sessionSweepIntervalMs = options.sessionSweepIntervalMs ?? DEFAULT_SESSION_SWEEP_INTERVAL_MS;
+  const allowedHosts = resolveAllowedHosts(options.allowedHosts, options.host);
 
   const sweepIdleSessions = async (): Promise<number> => {
     const cutoff = Date.now() - sessionTtlMs;
@@ -150,6 +199,20 @@ export async function startHttpTransport(
     const reqLogger = logger.child({ corrId, method: req.method, path: req.url });
 
     try {
+      // DNS rebinding protection: validate the Host header against the
+      // configured allow-list before doing anything else. See CVE-2025-66414.
+      if (allowedHosts.length > 0) {
+        const hostname = extractHostname(req.headers.host);
+        if (!hostname) {
+          writeJsonRpcError(res, 403, "Missing or invalid Host header");
+          return;
+        }
+        if (!allowedHosts.includes(hostname)) {
+          writeJsonRpcError(res, 403, `Invalid Host: ${hostname}`);
+          return;
+        }
+      }
+
       const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
       if (url.pathname !== options.path) {
