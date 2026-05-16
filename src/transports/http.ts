@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { logger, generateCorrelationId } from "../services/logger.js";
+import { resolveRequestScopedConfig, runWithRequestScopedConfig } from "../services/boond-client.js";
 
 export interface HttpTransportOptions {
   host: string;
@@ -231,6 +232,16 @@ export async function startHttpTransport(
         }
       }
 
+      const { config: scopedConfig, error: scopedConfigError } = resolveRequestScopedConfig({
+        method: req.method ?? "GET",
+        path: options.path,
+        headers: req.headers,
+      });
+      if (scopedConfigError) {
+        writeJsonRpcError(res, 401, scopedConfigError);
+        return;
+      }
+
       if (options.stateless) {
         if (req.method !== "POST") {
           writeJsonRpcError(res, 405, "Only POST is supported in stateless mode");
@@ -246,7 +257,9 @@ export async function startHttpTransport(
           void server.close();
         });
         await server.connect(transport);
-        await transport.handleRequest(req, res);
+        await runWithRequestScopedConfig(scopedConfig, async () => {
+          await transport.handleRequest(req, res);
+        });
         return;
       }
 
@@ -257,7 +270,9 @@ export async function startHttpTransport(
       if (sessionId && sessions.has(sessionId)) {
         const entry = sessions.get(sessionId)!;
         entry.lastActivityAt = Date.now();
-        await entry.transport.handleRequest(req, res);
+        await runWithRequestScopedConfig(scopedConfig, async () => {
+          await entry.transport.handleRequest(req, res);
+        });
         return;
       }
 
@@ -303,7 +318,9 @@ export async function startHttpTransport(
 
       const server = createServerFactory();
       await server.connect(transport);
-      await transport.handleRequest(req, res, body);
+      await runWithRequestScopedConfig(scopedConfig, async () => {
+        await transport.handleRequest(req, res, body);
+      });
     } catch (error) {
       reqLogger.error({ err: error }, "HTTP transport error");
       if (!res.headersSent) {

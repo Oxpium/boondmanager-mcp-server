@@ -1,4 +1,5 @@
-import { createHmac } from "crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHmac, timingSafeEqual } from "crypto";
 import {
   DEFAULT_BASE_URL,
   CHARACTER_LIMIT,
@@ -13,6 +14,7 @@ import type { BoondConfig, JsonApiResponse, SearchParams } from "../types.js";
 import { TokenBucket } from "./rate-limiter.js";
 
 let config: BoondConfig | null = null;
+const requestConfigStorage = new AsyncLocalStorage<BoondConfig>();
 
 function base64url(data: string | Buffer): string {
   const b64 = Buffer.from(data).toString("base64");
@@ -34,6 +36,168 @@ function envOrUndefined(key: string): string | undefined {
 }
 
 export const JWT_HEADER_NAME = "X-Jwt-Client-Boondmanager";
+const REQUEST_SIGNATURE_VERSION = "v1";
+const REQUEST_HEADER_NAMES = {
+  clientKey: "x-ox-boond-client-key",
+  clientToken: "x-ox-boond-client-token",
+  organizationId: "x-ox-boond-organization-id",
+  signature: "x-ox-boond-signature",
+  signatureTs: "x-ox-boond-signature-ts",
+  signatureVersion: "x-ox-boond-signature-version",
+  userId: "x-ox-boond-user-id",
+  userToken: "x-ox-boond-user-token",
+} as const;
+
+type RequestHeaderMap = Record<string, string | string[] | undefined>;
+
+function readHeader(headers: RequestHeaderMap, key: string): string | undefined {
+  const value = headers[key];
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function buildRequestSignaturePayload({
+  method,
+  path,
+  ts,
+  userId,
+  organizationId,
+  userToken,
+  clientToken,
+  clientKey,
+}: {
+  method: string;
+  path: string;
+  ts: string;
+  userId: string;
+  organizationId: string;
+  userToken: string;
+  clientToken: string;
+  clientKey: string;
+}): string {
+  return [
+    REQUEST_SIGNATURE_VERSION,
+    method.toUpperCase(),
+    path,
+    ts,
+    userId,
+    organizationId,
+    userToken,
+    clientToken,
+    clientKey,
+  ].join("\n");
+}
+
+function verifyRequestSignature({
+  method,
+  path,
+  headers,
+  sharedSecret,
+}: {
+  method: string;
+  path: string;
+  headers: RequestHeaderMap;
+  sharedSecret: string;
+}): boolean {
+  const signature = readHeader(headers, REQUEST_HEADER_NAMES.signature);
+  const ts = readHeader(headers, REQUEST_HEADER_NAMES.signatureTs);
+  const userId = readHeader(headers, REQUEST_HEADER_NAMES.userId);
+  const organizationId = readHeader(headers, REQUEST_HEADER_NAMES.organizationId);
+  const userToken = readHeader(headers, REQUEST_HEADER_NAMES.userToken);
+  const clientToken = readHeader(headers, REQUEST_HEADER_NAMES.clientToken);
+  const clientKey = readHeader(headers, REQUEST_HEADER_NAMES.clientKey);
+  const signatureVersion = readHeader(headers, REQUEST_HEADER_NAMES.signatureVersion);
+
+  if (
+    !signature ||
+    !ts ||
+    !userId ||
+    !organizationId ||
+    !userToken ||
+    !clientToken ||
+    !clientKey ||
+    signatureVersion !== REQUEST_SIGNATURE_VERSION
+  ) {
+    return false;
+  }
+
+  const payload = buildRequestSignaturePayload({
+    method,
+    path,
+    ts,
+    userId,
+    organizationId,
+    userToken,
+    clientToken,
+    clientKey,
+  });
+  const expected = createHmac("sha256", sharedSecret).update(payload).digest("hex");
+  if (expected.length !== signature.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+
+/**
+ * Resolves a per-request Boond config from x-ox headers.
+ * Returns null when no tenant headers are provided.
+ */
+export function resolveRequestScopedConfig({
+  method,
+  path,
+  headers,
+}: {
+  method: string;
+  path: string;
+  headers: RequestHeaderMap;
+}): { config: BoondConfig | null; error: string | null } {
+  const userToken = readHeader(headers, REQUEST_HEADER_NAMES.userToken);
+  const clientToken = readHeader(headers, REQUEST_HEADER_NAMES.clientToken);
+  const clientKey = readHeader(headers, REQUEST_HEADER_NAMES.clientKey);
+  const hasAnyTenantHeader = Boolean(userToken || clientToken || clientKey);
+
+  if (!hasAnyTenantHeader) {
+    return { config: null, error: null };
+  }
+
+  if (!userToken || !clientToken || !clientKey) {
+    return {
+      config: null,
+      error:
+        "Incomplete tenant credentials: expected x-ox-boond-user-token, x-ox-boond-client-token and x-ox-boond-client-key.",
+    };
+  }
+
+  const sharedSecret = envOrUndefined("BOOND_MCP_SHARED_SECRET");
+  if (sharedSecret) {
+    const isValid = verifyRequestSignature({
+      method,
+      path,
+      headers,
+      sharedSecret,
+    });
+    if (!isValid) {
+      return { config: null, error: "Invalid tenant signature." };
+    }
+  }
+
+  return {
+    config: {
+      baseUrl: envOrUndefined("BOOND_BASE_URL") || DEFAULT_BASE_URL,
+      authHeaderName: JWT_HEADER_NAME,
+      authHeaderValue: buildJwt(userToken, clientToken, clientKey),
+    },
+    error: null,
+  };
+}
+
+export async function runWithRequestScopedConfig<T>(
+  scopedConfig: BoondConfig | null,
+  fn: () => Promise<T>
+): Promise<T> {
+  if (!scopedConfig) {
+    return fn();
+  }
+  return requestConfigStorage.run(scopedConfig, fn);
+}
 
 export function initClient(): void {
   const baseUrl = envOrUndefined("BOOND_BASE_URL") || DEFAULT_BASE_URL;
@@ -76,6 +240,8 @@ export function initClient(): void {
 }
 
 function getConfig(): BoondConfig {
+  const scopedConfig = requestConfigStorage.getStore();
+  if (scopedConfig) return scopedConfig;
   if (!config) {
     initClient();
   }
